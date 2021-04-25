@@ -28,10 +28,12 @@ class GroupedTrainDataset(Dataset):
             tokenizer: PreTrainedTokenizer,
             train_args: RerankerTrainingArguments = None,
     ):
+        print("****************** starting loading ******************")
         self.nlp_dataset = datasets.load_dataset(
-            '/cache/reranker/Reranker/data_scripts/json.py',
+            '/cache/lcemodel/Reranker/data_scripts/json.py',
             data_files=path_to_tsv,
             ignore_verifications=False,
+            cache_dir='/cache/negs_cache',
             features=datasets.Features({
                 'qry': {
                     'qid': datasets.Value('string'),
@@ -47,12 +49,13 @@ class GroupedTrainDataset(Dataset):
                 }]}
             )
         )['train']
-
+        print("****************** compute parameters ******************")
         self.tok = tokenizer
         self.SEP = [self.tok.sep_token_id]
         self.args = args
         self.total_len = len(self.nlp_dataset)
         self.train_args = train_args
+        print("total_len:", self.total_len)
 
         if train_args is not None and train_args.collaborative:
             import torch.distributed as dist
@@ -87,8 +90,11 @@ class GroupedTrainDataset(Dataset):
         examples.append((qry, pos_psg))
 
         if len(group['neg']) < self.args.train_group_size - 1:
+            # print("no no no no no!!!")
             negs = random.choices(group['neg'], k=self.args.train_group_size - 1)
         else:
+            # print("enough negative samples")
+            # negs = group['neg'][0:self.args.train_group_size - 1]
             negs = random.sample(group['neg'], k=self.args.train_group_size - 1)
 
         for neg_entry in negs:
@@ -111,7 +117,7 @@ class PredictionDataset(Dataset):
 
     def __init__(self, path_to_json: List[str], tokenizer: PreTrainedTokenizer, max_len=128):
         self.nlp_dataset = datasets.load_dataset(
-            '/cache/reranker/Reranker/data_scripts/json.py',
+            '/cache/lcemodel/Reranker/data_scripts/json.py',
             data_files=path_to_json,
         )['train']
         self.tok = tokenizer
